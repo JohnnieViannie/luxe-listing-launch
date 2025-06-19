@@ -1,11 +1,14 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Heart, ShoppingBag, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import ProductQuickView from "@/components/ProductQuickView";
 import HelpButton from "@/components/HelpButton";
+import ProductFilters from "@/components/ProductFilters";
+import SearchAndSort from "@/components/SearchAndSort";
+import { ProductFilterProvider, useProductFilter } from "@/contexts/ProductFilterContext";
 
 interface Product {
   id: number;
@@ -83,9 +86,62 @@ const products: Product[] = [
   }
 ];
 
-const Index = () => {
+const ProductGrid = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const { filteredProducts, setProducts } = useProductFilter();
 
+  useEffect(() => {
+    setProducts(products);
+  }, [setProducts]);
+
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-6 lg:gap-8">
+      {filteredProducts.map((product) => (
+        <Card key={product.id} className="group border-none shadow-none bg-white overflow-hidden">
+          <CardContent className="p-0">
+            <div className="relative overflow-hidden">
+              <img
+                src={product.image}
+                alt={product.name}
+                className="w-full h-64 sm:h-80 object-cover transition-transform duration-300 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 flex items-center justify-center">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="secondary"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white hover:bg-gray-100 text-black font-medium"
+                      onClick={() => setSelectedProduct(product)}
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      Quick View
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                    {selectedProduct && <ProductQuickView product={selectedProduct} />}
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </div>
+            <div className="py-4 space-y-2">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                {product.brand}
+              </p>
+              <h3 className="text-sm font-medium text-black line-clamp-2">
+                {product.name}
+              </h3>
+              <p className="text-lg font-semibold text-black">
+                ${product.price}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+};
+
+const IndexContent = () => {
   return (
     <div className="min-h-screen bg-white">
       {/* Top Strip */}
@@ -138,56 +194,29 @@ const Index = () => {
         </h2>
       </div>
 
-      {/* Product Grid */}
+      {/* Main Content with Filters */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 lg:gap-8">
-          {products.map((product) => (
-            <Card key={product.id} className="group border-none shadow-none bg-white overflow-hidden">
-              <CardContent className="p-0">
-                <div className="relative overflow-hidden">
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className="w-full h-64 sm:h-80 object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 flex items-center justify-center">
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="secondary"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white hover:bg-gray-100 text-black font-medium"
-                          onClick={() => setSelectedProduct(product)}
-                        >
-                          <Eye className="h-4 w-4 mr-2" />
-                          Quick View
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                        {selectedProduct && <ProductQuickView product={selectedProduct} />}
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                </div>
-                <div className="py-4 space-y-2">
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                    {product.brand}
-                  </p>
-                  <h3 className="text-sm font-medium text-black line-clamp-2">
-                    {product.name}
-                  </h3>
-                  <p className="text-lg font-semibold text-black">
-                    ${product.price}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="flex gap-8">
+          <ProductFilters />
+          
+          <div className="flex-1">
+            <SearchAndSort />
+            <ProductGrid />
+          </div>
         </div>
       </div>
 
       {/* Fixed Help Button */}
       <HelpButton />
     </div>
+  );
+};
+
+const Index = () => {
+  return (
+    <ProductFilterProvider>
+      <IndexContent />
+    </ProductFilterProvider>
   );
 };
 
