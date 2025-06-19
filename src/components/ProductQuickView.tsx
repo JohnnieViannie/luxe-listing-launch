@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Heart, Plus, Minus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useCart } from "@/contexts/CartContext";
 
 interface Product {
   id: number;
@@ -22,6 +23,7 @@ const ProductQuickView = ({ product }: ProductQuickViewProps) => {
   const [selectedColor, setSelectedColor] = useState("black");
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
+  const { addToCart } = useCart();
 
   const sizes = ["XS", "S", "M", "L", "XL"];
   const colors = [
@@ -30,6 +32,10 @@ const ProductQuickView = ({ product }: ProductQuickViewProps) => {
     { name: "navy", value: "#1E3A8A" },
     { name: "gray", value: "#6B7280" }
   ];
+
+  const handleAddToCart = () => {
+    addToCart(product, selectedSize, selectedColor, quantity);
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 p-4 sm:p-6">
@@ -124,7 +130,10 @@ const ProductQuickView = ({ product }: ProductQuickViewProps) => {
         {/* Actions */}
         <div className="space-y-3 sm:space-y-4">
           <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
-            <Button className="flex-1 bg-black hover:bg-gray-800 text-white font-medium py-2 sm:py-3 text-sm sm:text-base">
+            <Button 
+              onClick={handleAddToCart}
+              className="flex-1 bg-black hover:bg-gray-800 text-white font-medium py-2 sm:py-3 text-sm sm:text-base"
+            >
               Add to Cart
             </Button>
             <Button

@@ -2,13 +2,15 @@
 import { useState, useEffect } from "react";
 import { Search, Heart, ShoppingBag, Eye, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import ProductQuickView from "@/components/ProductQuickView";
 import HelpButton from "@/components/HelpButton";
 import ProductFilters from "@/components/ProductFilters";
 import SearchAndSort from "@/components/SearchAndSort";
 import { ProductFilterProvider, useProductFilter } from "@/contexts/ProductFilterContext";
+import { useCart } from "@/contexts/CartContext";
+import { useNavigate } from "react-router-dom";
 
 interface Product {
   id: number;
@@ -23,7 +25,7 @@ const products: Product[] = [
   {
     id: 1,
     image: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400",
-    brand: "PREMIUM BASICS",
+    brand: "LUXE",
     name: "Essential White Tee",
     price: 89,
     category: "shirts"
@@ -31,7 +33,7 @@ const products: Product[] = [
   {
     id: 2,
     image: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400",
-    brand: "STREETWEAR CO",
+    brand: "LUXE",
     name: "Classic Baseball Cap",
     price: 45,
     category: "hats"
@@ -39,7 +41,7 @@ const products: Product[] = [
   {
     id: 3,
     image: "https://images.unsplash.com/photo-1591195853828-11db59a44f6b?w=400",
-    brand: "SUMMER ESSENTIALS",
+    brand: "LUXE",
     name: "Linen Blend Shorts",
     price: 125,
     category: "shorts"
@@ -47,7 +49,7 @@ const products: Product[] = [
   {
     id: 4,
     image: "https://images.unsplash.com/photo-1586790170083-2f9ceadc732d?w=400",
-    brand: "POLO HERITAGE",
+    brand: "LUXE",
     name: "Classic Polo Shirt",
     price: 95,
     category: "polos"
@@ -55,7 +57,7 @@ const products: Product[] = [
   {
     id: 5,
     image: "https://images.unsplash.com/photo-1620012253295-c15cc3e65df4?w=400",
-    brand: "URBAN EDGE",
+    brand: "LUXE",
     name: "Oversized Hoodie",
     price: 165,
     category: "shirts"
@@ -63,7 +65,7 @@ const products: Product[] = [
   {
     id: 6,
     image: "https://images.unsplash.com/photo-1605518216938-7c31b7b14ad0?w=400",
-    brand: "LUXURY DENIM",
+    brand: "LUXE",
     name: "Slim Fit Jeans",
     price: 210,
     category: "pants"
@@ -71,7 +73,7 @@ const products: Product[] = [
   {
     id: 7,
     image: "https://images.unsplash.com/photo-1549298916-b41d501d3772?w=400",
-    brand: "FOOTWEAR ELITE",
+    brand: "LUXE",
     name: "Leather Sneakers",
     price: 295,
     category: "shoes"
@@ -79,7 +81,7 @@ const products: Product[] = [
   {
     id: 8,
     image: "https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=400",
-    brand: "ACCESSORY HOUSE",
+    brand: "LUXE",
     name: "Minimalist Watch",
     price: 340,
     category: "accessories"
@@ -89,17 +91,23 @@ const products: Product[] = [
 const ProductGrid = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const { filteredProducts, setProducts } = useProductFilter();
+  const { getTotalItems } = useCart();
+  const navigate = useNavigate();
 
   useEffect(() => {
     setProducts(products);
   }, [setProducts]);
 
+  const handleProductClick = (product: Product) => {
+    navigate(`/product/${product.id}`, { state: { product } });
+  };
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
       {filteredProducts.map((product) => (
-        <Card key={product.id} className="group border-none shadow-none bg-white overflow-hidden">
+        <Card key={product.id} className="group border-none shadow-none bg-white overflow-hidden cursor-pointer">
           <CardContent className="p-0">
-            <div className="relative overflow-hidden">
+            <div className="relative overflow-hidden" onClick={() => handleProductClick(product)}>
               <img
                 src={product.image}
                 alt={product.name}
@@ -111,19 +119,23 @@ const ProductGrid = () => {
                     <Button
                       variant="secondary"
                       className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white hover:bg-gray-100 text-black font-medium text-xs sm:text-sm"
-                      onClick={() => setSelectedProduct(product)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedProduct(product);
+                      }}
                     >
                       <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                       Quick View
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                    <DialogTitle className="sr-only">Product Quick View</DialogTitle>
                     {selectedProduct && <ProductQuickView product={selectedProduct} />}
                   </DialogContent>
                 </Dialog>
               </div>
             </div>
-            <div className="py-3 sm:py-4 space-y-1 sm:space-y-2 px-2 sm:px-0">
+            <div className="py-3 sm:py-4 space-y-1 sm:space-y-2 px-2 sm:px-0" onClick={() => handleProductClick(product)}>
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                 {product.brand}
               </p>
@@ -143,6 +155,8 @@ const ProductGrid = () => {
 
 const IndexContent = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { getTotalItems } = useCart();
+  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-white">
@@ -193,7 +207,14 @@ const IndexContent = () => {
                 <Search className="h-4 w-4 sm:h-5 sm:w-5 text-gray-700 hover:text-black cursor-pointer transition-colors" />
               </div>
               <Heart className="h-4 w-4 sm:h-5 sm:w-5 text-gray-700 hover:text-black cursor-pointer transition-colors" />
-              <ShoppingBag className="h-4 w-4 sm:h-5 sm:w-5 text-gray-700 hover:text-black cursor-pointer transition-colors" />
+              <div className="relative cursor-pointer" onClick={() => navigate('/cart')}>
+                <ShoppingBag className="h-4 w-4 sm:h-5 sm:w-5 text-gray-700 hover:text-black transition-colors" />
+                {getTotalItems() > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-black text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {getTotalItems()}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 

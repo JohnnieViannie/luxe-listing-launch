@@ -10,7 +10,6 @@ import { useProductFilter } from '@/contexts/ProductFilterContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 
 const categories = ['shirts', 'hats', 'shorts', 'polos', 'pants', 'shoes', 'accessories'];
-const brands = ['PREMIUM BASICS', 'STREETWEAR CO', 'SUMMER ESSENTIALS', 'POLO HERITAGE', 'URBAN EDGE', 'LUXURY DENIM', 'FOOTWEAR ELITE', 'ACCESSORY HOUSE'];
 const sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 const colors = ['Black', 'White', 'Gray', 'Navy', 'Brown', 'Blue', 'Red', 'Green'];
 
@@ -34,7 +33,6 @@ const FilterContent = () => {
   const {
     filters,
     toggleCategory,
-    toggleBrand,
     toggleSize,
     toggleColor,
     setPriceRange,
@@ -61,23 +59,6 @@ const FilterContent = () => {
               />
               <label htmlFor={`category-${category}`} className="text-sm text-gray-700 capitalize cursor-pointer">
                 {category}
-              </label>
-            </div>
-          ))}
-        </div>
-      </FilterSection>
-
-      <FilterSection title="Brand">
-        <div className="space-y-2 max-h-48 overflow-y-auto">
-          {brands.map((brand) => (
-            <div key={brand} className="flex items-center space-x-2">
-              <Checkbox
-                id={`brand-${brand}`}
-                checked={filters.selectedBrands.includes(brand)}
-                onCheckedChange={() => toggleBrand(brand)}
-              />
-              <label htmlFor={`brand-${brand}`} className="text-sm text-gray-700 cursor-pointer">
-                {brand}
               </label>
             </div>
           ))}
