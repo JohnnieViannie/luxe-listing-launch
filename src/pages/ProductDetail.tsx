@@ -4,9 +4,25 @@ import { Button } from "@/components/ui/button";
 import { Heart, Plus, Minus, ArrowLeft, Truck, RotateCcw, Shield } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { useCart } from "@/contexts/CartContext";
+import { useNavigate, useParams } from "react-router-dom";
 import HelpButton from "@/components/HelpButton";
 
+// Mock product data - in real app this would come from API
+const mockProduct = {
+  id: 1,
+  image: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800",
+  brand: "LUXE",
+  name: "Essential White Tee",
+  price: 89,
+  category: "clothing"
+};
+
 const ProductDetail = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { addToCart } = useCart();
+  
   const [selectedSize, setSelectedSize] = useState("M");
   const [selectedColor, setSelectedColor] = useState("black");
   const [quantity, setQuantity] = useState(1);
@@ -27,13 +43,21 @@ const ProductDetail = () => {
     "https://images.unsplash.com/photo-1622445275576-721325763afe?w=800"
   ];
 
+  const handleAddToCart = () => {
+    addToCart(mockProduct, selectedSize, selectedColor, quantity);
+  };
+
+  const handleBackClick = () => {
+    navigate(-1);
+  };
+
   return (
     <div className="min-h-screen bg-white">
       {/* Navigation Header */}
       <nav className="border-b border-gray-200 bg-white sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <Button variant="ghost" className="flex items-center text-gray-600 hover:text-black">
+            <Button variant="ghost" onClick={handleBackClick} className="flex items-center text-gray-600 hover:text-black">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
@@ -153,7 +177,10 @@ const ProductDetail = () => {
             {/* Actions */}
             <div className="space-y-4">
               <div className="flex space-x-4">
-                <Button className="flex-1 bg-black hover:bg-gray-800 text-white font-medium py-4 text-lg">
+                <Button 
+                  onClick={handleAddToCart}
+                  className="flex-1 bg-black hover:bg-gray-800 text-white font-medium py-4 text-lg"
+                >
                   Add to Cart
                 </Button>
                 <Button
