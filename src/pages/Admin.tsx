@@ -1,7 +1,6 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -14,8 +13,13 @@ import {
   Search,
   Edit,
   Eye,
-  Trash2
+  Trash2,
+  LayoutDashboard,
+  LogOut
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import AdminLogin from "../components/AdminLogin";
+import AddProductModal from "../components/AddProductModal";
 
 // Types for Django API data
 interface DjangoProduct {
@@ -64,13 +68,37 @@ const Admin = () => {
   const [orders, setOrders] = useState<DjangoOrder[]>([]);
   const [customers, setCustomers] = useState<DjangoCustomer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeSection, setActiveSection] = useState("overview");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showAddProduct, setShowAddProduct] = useState(false);
+  const navigate = useNavigate();
 
   const API_BASE = "http://127.0.0.1:8000/api";
 
   useEffect(() => {
-    fetchData();
+    // Check if admin is already logged in
+    const adminAuth = localStorage.getItem('adminAuth');
+    if (adminAuth === 'true') {
+      setIsAuthenticated(true);
+      fetchData();
+    } else {
+      setLoading(false);
+    }
   }, []);
+
+  const handleLogin = (success: boolean) => {
+    if (success) {
+      setIsAuthenticated(true);
+      localStorage.setItem('adminAuth', 'true');
+      fetchData();
+    }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    localStorage.removeItem('adminAuth');
+    navigate('/');
+  };
 
   const fetchData = async () => {
     try {
@@ -114,6 +142,17 @@ const Admin = () => {
     }
   };
 
+  const sidebarItems = [
+    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+    { id: 'products', label: 'Products', icon: Package },
+    { id: 'orders', label: 'Orders', icon: ShoppingCart },
+    { id: 'customers', label: 'Customers', icon: Users }
+  ];
+
+  if (!isAuthenticated) {
+    return <AdminLogin onLogin={handleLogin} loading={loading} />;
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -126,202 +165,221 @@ const Admin = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">LUXE Admin Dashboard</h1>
-              <p className="text-gray-600">Manage your e-commerce platform</p>
-            </div>
-            <Button className="bg-black hover:bg-gray-800">
-              <Plus className="h-4 w-4 mr-2" />
-              Add New Product
-            </Button>
-          </div>
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <div className="w-64 bg-white shadow-lg">
+        <div className="p-6 border-b">
+          <h1 className="text-2xl font-bold text-gray-900">LUXE Admin</h1>
+          <p className="text-sm text-gray-600">E-commerce Dashboard</p>
+        </div>
+        
+        <nav className="mt-6">
+          {sidebarItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveSection(item.id)}
+              className={`w-full flex items-center px-6 py-3 text-left hover:bg-gray-100 transition-colors ${
+                activeSection === item.id ? 'bg-gray-100 border-r-2 border-black' : ''
+              }`}
+            >
+              <item.icon className="h-5 w-5 mr-3" />
+              <span className="font-medium">{item.label}</span>
+            </button>
+          ))}
+        </nav>
+
+        <div className="absolute bottom-6 left-6">
+          <Button onClick={handleLogout} variant="outline" className="flex items-center">
+            <LogOut className="h-4 w-4 mr-2" />
+            Logout
+          </Button>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="products">Products</TabsTrigger>
-            <TabsTrigger value="orders">Orders</TabsTrigger>
-            <TabsTrigger value="customers">Customers</TabsTrigger>
-          </TabsList>
-
-          {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Total Products</p>
-                      <p className="text-3xl font-bold text-gray-900">{products.length}</p>
-                    </div>
-                    <Package className="h-8 w-8 text-blue-600" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Total Orders</p>
-                      <p className="text-3xl font-bold text-gray-900">{orders.length}</p>
-                    </div>
-                    <ShoppingCart className="h-8 w-8 text-green-600" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Total Customers</p>
-                      <p className="text-3xl font-bold text-gray-900">{customers.length}</p>
-                    </div>
-                    <Users className="h-8 w-8 text-purple-600" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Active Products</p>
-                      <p className="text-3xl font-bold text-gray-900">
-                        {products.filter(p => p.is_active).length}
-                      </p>
-                    </div>
-                    <Truck className="h-8 w-8 text-orange-600" />
-                  </div>
-                </CardContent>
-              </Card>
+      <div className="flex-1 overflow-x-auto">
+        <div className="p-8">
+          {/* Header */}
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <h2 className="text-3xl font-bold text-gray-900 capitalize">{activeSection}</h2>
+              <p className="text-gray-600">Manage your e-commerce platform</p>
             </div>
+            {activeSection === 'products' && (
+              <Button onClick={() => setShowAddProduct(true)} className="bg-black hover:bg-gray-800">
+                <Plus className="h-4 w-4 mr-2" />
+                Add New Product
+              </Button>
+            )}
+          </div>
 
-            {/* Recent Orders */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Orders</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {orders.slice(0, 5).map((order) => (
-                    <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg">
+          {/* Content based on active section */}
+          {activeSection === 'overview' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
                       <div>
-                        <p className="font-medium">#{order.order_number}</p>
-                        <p className="text-sm text-gray-600">
-                          {order.customer.first_name} {order.customer.last_name}
+                        <p className="text-sm font-medium text-gray-600">Total Products</p>
+                        <p className="text-3xl font-bold text-gray-900">{products.length}</p>
+                      </div>
+                      <Package className="h-8 w-8 text-blue-600" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Total Orders</p>
+                        <p className="text-3xl font-bold text-gray-900">{orders.length}</p>
+                      </div>
+                      <ShoppingCart className="h-8 w-8 text-green-600" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Total Customers</p>
+                        <p className="text-3xl font-bold text-gray-900">{customers.length}</p>
+                      </div>
+                      <Users className="h-8 w-8 text-purple-600" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Active Products</p>
+                        <p className="text-3xl font-bold text-gray-900">
+                          {products.filter(p => p.is_active).length}
                         </p>
                       </div>
-                      <div className="text-right">
-                        <Badge className={getStatusColor(order.status)}>
-                          {order.status}
-                        </Badge>
-                        <p className="text-sm text-gray-600 mt-1">${order.total_amount}</p>
-                      </div>
+                      <Truck className="h-8 w-8 text-orange-600" />
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                  </CardContent>
+                </Card>
+              </div>
 
-          {/* Products Tab */}
-          <TabsContent value="products" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center space-x-4">
-                <div className="relative">
-                  <Search className="h-4 w-4 absolute left-3 top-3 text-gray-400" />
-                  <Input placeholder="Search products..." className="pl-10 w-64" />
+              {/* Recent Orders */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recent Orders</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {orders.slice(0, 5).map((order) => (
+                      <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div>
+                          <p className="font-medium">#{order.order_number}</p>
+                          <p className="text-sm text-gray-600">
+                            {order.customer.first_name} {order.customer.last_name}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <Badge className={getStatusColor(order.status)}>
+                            {order.status}
+                          </Badge>
+                          <p className="text-sm text-gray-600 mt-1">${order.total_amount}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {activeSection === 'products' && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center space-x-4">
+                  <div className="relative">
+                    <Search className="h-4 w-4 absolute left-3 top-3 text-gray-400" />
+                    <Input placeholder="Search products..." className="pl-10 w-64" />
+                  </div>
                 </div>
               </div>
-              <Button className="bg-black hover:bg-gray-800">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Product
-              </Button>
-            </div>
 
-            <Card>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="border-b bg-gray-50">
-                      <tr>
-                        <th className="text-left p-4">Product</th>
-                        <th className="text-left p-4">Category</th>
-                        <th className="text-left p-4">Price</th>
-                        <th className="text-left p-4">Stock</th>
-                        <th className="text-left p-4">Status</th>
-                        <th className="text-left p-4">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {products.map((product) => (
-                        <tr key={product.id} className="border-b">
-                          <td className="p-4">
-                            <div className="flex items-center space-x-3">
-                              {product.images[0] && (
-                                <img 
-                                  src={`http://127.0.0.1:8000${product.images[0].image}`}
-                                  alt={product.name}
-                                  className="w-12 h-12 object-cover rounded"
-                                />
-                              )}
-                              <div>
-                                <p className="font-medium">{product.name}</p>
-                                <p className="text-sm text-gray-600">{product.brand}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-4 capitalize">{product.category}</td>
-                          <td className="p-4">${product.price}</td>
-                          <td className="p-4">
-                            <span className={`px-2 py-1 rounded-full text-xs ${
-                              product.stock_quantity > 10 ? 'bg-green-100 text-green-800' :
-                              product.stock_quantity > 0 ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-red-100 text-red-800'
-                            }`}>
-                              {product.stock_quantity} in stock
-                            </span>
-                          </td>
-                          <td className="p-4">
-                            <Badge className={product.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-                              {product.is_active ? 'Active' : 'Inactive'}
-                            </Badge>
-                          </td>
-                          <td className="p-4">
-                            <div className="flex items-center space-x-2">
-                              <Button variant="ghost" size="sm">
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="sm">
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </td>
+              <Card>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="border-b bg-gray-50">
+                        <tr>
+                          <th className="text-left p-4">Product</th>
+                          <th className="text-left p-4">Category</th>
+                          <th className="text-left p-4">Price</th>
+                          <th className="text-left p-4">Stock</th>
+                          <th className="text-left p-4">Status</th>
+                          <th className="text-left p-4">Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                      </thead>
+                      <tbody>
+                        {products.map((product) => (
+                          <tr key={product.id} className="border-b">
+                            <td className="p-4">
+                              <div className="flex items-center space-x-3">
+                                {product.images[0] && (
+                                  <img 
+                                    src={`http://127.0.0.1:8000${product.images[0].image}`}
+                                    alt={product.name}
+                                    className="w-12 h-12 object-cover rounded"
+                                  />
+                                )}
+                                <div>
+                                  <p className="font-medium">{product.name}</p>
+                                  <p className="text-sm text-gray-600">{product.brand}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-4 capitalize">{product.category}</td>
+                            <td className="p-4">${product.price}</td>
+                            <td className="p-4">
+                              <span className={`px-2 py-1 rounded-full text-xs ${
+                                product.stock_quantity > 10 ? 'bg-green-100 text-green-800' :
+                                product.stock_quantity > 0 ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-red-100 text-red-800'
+                              }`}>
+                                {product.stock_quantity} in stock
+                              </span>
+                            </td>
+                            <td className="p-4">
+                              <Badge className={product.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+                                {product.is_active ? 'Active' : 'Inactive'}
+                              </Badge>
+                            </td>
+                            <td className="p-4">
+                              <div className="flex items-center space-x-2">
+                                <Button variant="ghost" size="sm">
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm">
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
-          {/* Orders Tab */}
-          <TabsContent value="orders" className="space-y-6">
+          {activeSection === 'orders' && (
             <Card>
               <CardHeader>
                 <CardTitle>All Orders</CardTitle>
@@ -383,10 +441,9 @@ const Admin = () => {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+          )}
 
-          {/* Customers Tab */}
-          <TabsContent value="customers" className="space-y-6">
+          {activeSection === 'customers' && (
             <Card>
               <CardHeader>
                 <CardTitle>All Customers</CardTitle>
@@ -438,9 +495,17 @@ const Admin = () => {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+          )}
+        </div>
       </div>
+
+      {/* Add Product Modal */}
+      {showAddProduct && (
+        <AddProductModal 
+          onClose={() => setShowAddProduct(false)} 
+          onProductAdded={fetchData}
+        />
+      )}
     </div>
   );
 };
