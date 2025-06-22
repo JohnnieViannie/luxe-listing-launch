@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,11 +14,14 @@ import {
   Eye,
   Trash2,
   LayoutDashboard,
-  LogOut
+  LogOut,
+  Check,
+  X
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import AdminLogin from "../components/AdminLogin";
 import AddProductModal from "../components/AddProductModal";
+import { useToast } from "@/hooks/use-toast";
 
 // Types for Django API data
 interface DjangoProduct {
@@ -72,8 +74,78 @@ const Admin = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showAddProduct, setShowAddProduct] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const API_BASE = "http://127.0.0.1:8000/api";
+
+  // Sample data for demonstration
+  const sampleOrders: DjangoOrder[] = [
+    {
+      id: 1,
+      order_number: "ORD-2024-001",
+      customer: { first_name: "John", last_name: "Doe", email: "john@example.com" },
+      status: "pending",
+      payment_status: "pending",
+      total_amount: "70000",
+      created_at: "2024-01-15T10:30:00Z"
+    },
+    {
+      id: 2,
+      order_number: "ORD-2024-002",
+      customer: { first_name: "Jane", last_name: "Smith", email: "jane@example.com" },
+      status: "confirmed",
+      payment_status: "paid",
+      total_amount: "150000",
+      created_at: "2024-01-14T14:20:00Z"
+    },
+    {
+      id: 3,
+      order_number: "ORD-2024-003",
+      customer: { first_name: "Mike", last_name: "Johnson", email: "mike@example.com" },
+      status: "shipped",
+      payment_status: "paid",
+      total_amount: "250000",
+      created_at: "2024-01-13T09:15:00Z"
+    },
+    {
+      id: 4,
+      order_number: "ORD-2024-004",
+      customer: { first_name: "Sarah", last_name: "Wilson", email: "sarah@example.com" },
+      status: "delivered",
+      payment_status: "paid",
+      total_amount: "100000",
+      created_at: "2024-01-12T16:45:00Z"
+    },
+    {
+      id: 5,
+      order_number: "ORD-2024-005",
+      customer: { first_name: "David", last_name: "Brown", email: "david@example.com" },
+      status: "processing",
+      payment_status: "paid",
+      total_amount: "320000",
+      created_at: "2024-01-11T11:30:00Z"
+    }
+  ];
+
+  // USD to UGX conversion rate (approximate)
+  const UGX_TO_USD_RATE = 3700;
+
+  const convertToUSD = (ugxAmount: string | number): string => {
+    const ugx = typeof ugxAmount === 'string' ? parseFloat(ugxAmount) : ugxAmount;
+    const usd = ugx / UGX_TO_USD_RATE;
+    return usd.toFixed(2);
+  };
+
+  const formatCurrency = (amount: string | number, showBoth: boolean = true) => {
+    const ugx = typeof amount === 'string' ? parseFloat(amount) : amount;
+    const formattedUGX = `UGX ${ugx.toLocaleString()}`;
+    
+    if (showBoth) {
+      const usd = convertToUSD(ugx);
+      return `${formattedUGX} ($${usd})`;
+    }
+    return formattedUGX;
+  };
 
   useEffect(() => {
     // Check if admin is already logged in
@@ -104,9 +176,8 @@ const Admin = () => {
     try {
       setLoading(true);
       
-      const [productsRes, ordersRes, customersRes] = await Promise.all([
+      const [productsRes, customersRes] = await Promise.all([
         fetch(`${API_BASE}/products/`),
-        fetch(`${API_BASE}/orders/`),
         fetch(`${API_BASE}/customers/`)
       ]);
 
@@ -115,19 +186,58 @@ const Admin = () => {
         setProducts(productsData.results || productsData);
       }
 
-      if (ordersRes.ok) {
-        const ordersData = await ordersRes.json();
-        setOrders(ordersData.results || ordersData);
-      }
-
       if (customersRes.ok) {
         const customersData = await customersRes.json();
         setCustomers(customersData.results || customersData);
       }
+
+      // Use sample orders for now
+      setOrders(sampleOrders);
     } catch (error) {
       console.error("Error fetching data:", error);
+      // Use sample data as fallback
+      setOrders(sampleOrders);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOrderAction = async (orderId: number, action: 'delete' | 'delivered' | 'confirmed') => {
+    try {
+      if (action === 'delete') {
+        setOrders(prev => prev.filter(order => order.id !== orderId));
+        toast({
+          title: "Order Deleted",
+          description: "Order has been successfully deleted.",
+        });
+      } else if (action === 'delivered') {
+        setOrders(prev => prev.map(order => 
+          order.id === orderId 
+            ? { ...order, status: 'delivered', payment_status: 'paid' }
+            : order
+        ));
+        toast({
+          title: "Order Updated",
+          description: "Order marked as delivered.",
+        });
+      } else if (action === 'confirmed') {
+        setOrders(prev => prev.map(order => 
+          order.id === orderId 
+            ? { ...order, status: 'confirmed', payment_status: 'paid' }
+            : order
+        ));
+        toast({
+          title: "Order Updated",
+          description: "Order marked as confirmed.",
+        });
+      }
+    } catch (error) {
+      console.error("Error updating order:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update order. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -138,6 +248,7 @@ const Admin = () => {
       case 'shipped': return 'bg-purple-100 text-purple-800';
       case 'delivered': return 'bg-green-100 text-green-800';
       case 'cancelled': return 'bg-red-100 text-red-800';
+      case 'processing': return 'bg-indigo-100 text-indigo-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -257,9 +368,9 @@ const Admin = () => {
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-600">Active Products</p>
-                        <p className="text-3xl font-bold text-gray-900">
-                          {products.filter(p => p.is_active).length}
+                        <p className="text-sm font-medium text-gray-600">Revenue (UGX)</p>
+                        <p className="text-xl font-bold text-gray-900">
+                          {formatCurrency(orders.reduce((sum, order) => sum + parseFloat(order.total_amount), 0), false)}
                         </p>
                       </div>
                       <Truck className="h-8 w-8 text-orange-600" />
@@ -287,7 +398,7 @@ const Admin = () => {
                           <Badge className={getStatusColor(order.status)}>
                             {order.status}
                           </Badge>
-                          <p className="text-sm text-gray-600 mt-1">${order.total_amount}</p>
+                          <p className="text-sm text-gray-600 mt-1">{formatCurrency(order.total_amount)}</p>
                         </div>
                       </div>
                     ))}
@@ -341,7 +452,7 @@ const Admin = () => {
                               </div>
                             </td>
                             <td className="p-4 capitalize">{product.category}</td>
-                            <td className="p-4">${product.price}</td>
+                            <td className="p-4">{formatCurrency(product.price)}</td>
                             <td className="p-4">
                               <span className={`px-2 py-1 rounded-full text-xs ${
                                 product.stock_quantity > 10 ? 'bg-green-100 text-green-800' :
@@ -420,17 +531,44 @@ const Admin = () => {
                               {order.payment_status}
                             </Badge>
                           </td>
-                          <td className="p-4 font-medium">${order.total_amount}</td>
+                          <td className="p-4 font-medium">{formatCurrency(order.total_amount)}</td>
                           <td className="p-4 text-sm text-gray-600">
                             {new Date(order.created_at).toLocaleDateString()}
                           </td>
                           <td className="p-4">
                             <div className="flex items-center space-x-2">
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => handleOrderAction(order.id, 'confirmed')}
+                                title="Mark as Confirmed"
+                                className="text-blue-600 hover:text-blue-700"
+                              >
+                                <Check className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => handleOrderAction(order.id, 'delivered')}
+                                title="Mark as Delivered"
+                                className="text-green-600 hover:text-green-700"
+                              >
+                                <Truck className="h-4 w-4" />
+                              </Button>
                               <Button variant="ghost" size="sm">
                                 <Eye className="h-4 w-4" />
                               </Button>
                               <Button variant="ghost" size="sm">
                                 <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-red-600 hover:text-red-700"
+                                onClick={() => handleOrderAction(order.id, 'delete')}
+                                title="Delete Order"
+                              >
+                                <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
                           </td>
