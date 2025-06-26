@@ -1,7 +1,6 @@
-
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { CheckCircle, Package, Receipt, Truck, Clock, MapPin } from 'lucide-react';
+import { CheckCircle, Package, Receipt, Truck, Clock, MapPin, Download } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 const OrderConfirmation = () => {
@@ -33,6 +32,51 @@ const OrderConfirmation = () => {
 
   const deliveryDate = new Date();
   deliveryDate.setDate(deliveryDate.getDate() + 7); // 7 days from now
+
+  const handleDownloadReceipt = () => {
+    // Create receipt content
+    const receiptContent = `
+LUXE STORE - PAYMENT RECEIPT
+============================
+
+Order Number: #${orderNumber}
+Transaction Ref: ${transactionRef}
+Payment Method: ${paymentMethod}
+Payment Status: Completed
+Date: ${new Date().toLocaleDateString()}
+
+CUSTOMER INFORMATION
+====================
+Name: ${customerInfo?.firstName} ${customerInfo?.lastName}
+Email: ${customerInfo?.email}
+Phone: ${customerInfo?.phone}
+${customerInfo?.address ? `Address: ${customerInfo.address}` : ''}
+
+ORDER ITEMS
+===========
+${items?.map(item => 
+  `${item.name} (${item.brand})
+  Size: ${item.selectedSize}, Color: ${item.selectedColor}
+  Quantity: ${item.quantity}
+  Price: $${(item.price * item.quantity).toFixed(2)} (UGX ${Math.round(item.price * item.quantity * 3700).toLocaleString()})`
+).join('\n\n')}
+
+TOTAL PAID: $${total?.toFixed(2)} (UGX ${totalUGX?.toLocaleString()})
+
+Thank you for shopping with LUXE Store!
+    `;
+
+    // Create and download the receipt
+    const blob = new Blob([receiptContent], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `LUXE_Receipt_${orderNumber}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -192,7 +236,12 @@ const OrderConfirmation = () => {
               Continue Shopping
             </Button>
           </Link>
-          <Button variant="outline" className="border-black text-black hover:bg-gray-50 px-8 py-3">
+          <Button 
+            onClick={handleDownloadReceipt}
+            variant="outline" 
+            className="border-black text-black hover:bg-gray-50 px-8 py-3"
+          >
+            <Download className="h-4 w-4 mr-2" />
             Download Receipt
           </Button>
         </div>

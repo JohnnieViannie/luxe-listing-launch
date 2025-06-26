@@ -14,6 +14,7 @@ const FloatingCart = () => {
   if (getTotalItems() === 0) return null;
 
   const handleQuickCheckout = () => {
+    setIsOpen(false); // Close the modal when navigating to checkout
     navigate('/checkout');
   };
 
@@ -23,10 +24,11 @@ const FloatingCart = () => {
       <div className="fixed bottom-4 right-4 z-50">
         <Button
           onClick={() => setIsOpen(!isOpen)}
-          className="rounded-full bg-black hover:bg-gray-800 text-white p-4 shadow-lg"
-          size="icon"
+          className="rounded-full bg-black hover:bg-gray-800 text-white p-4 shadow-lg flex items-center gap-2"
+          size="default"
         >
           <ShoppingBag className="h-6 w-6" />
+          <span className="hidden sm:inline text-sm font-medium">Checkout</span>
           <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center">
             {getTotalItems()}
           </span>
@@ -100,7 +102,10 @@ const FloatingCart = () => {
                     Quick Pay
                   </Button>
                   <Button
-                    onClick={() => navigate('/cart')}
+                    onClick={() => {
+                      setIsOpen(false);
+                      navigate('/cart');
+                    }}
                     variant="outline"
                     className="w-full border-black text-black hover:bg-gray-50"
                   >
