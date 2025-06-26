@@ -34,6 +34,8 @@ interface ProductFilterContextType {
   clearFilters: () => void;
   filteredProducts: Product[];
   setProducts: (products: Product[]) => void;
+  searchTerm: string;
+  setSearchTerm: (term: string) => void;
 }
 
 const initialFilters: FilterState = {
@@ -42,7 +44,7 @@ const initialFilters: FilterState = {
   selectedBrands: [],
   selectedSizes: [],
   selectedColors: [],
-  priceRange: [0, 500],
+  priceRange: [0, 500000],
   sortBy: 'newest'
 };
 
@@ -66,6 +68,10 @@ export const ProductFilterProvider = ({ children }: ProductFilterProviderProps) 
 
   const setSearchQuery = (query: string) => {
     setFilters(prev => ({ ...prev, searchQuery: query }));
+  };
+
+  const setSearchTerm = (term: string) => {
+    setSearchQuery(term);
   };
 
   const toggleCategory = (category: string) => {
@@ -165,7 +171,9 @@ export const ProductFilterProvider = ({ children }: ProductFilterProviderProps) 
       setSortBy,
       clearFilters,
       filteredProducts,
-      setProducts
+      setProducts,
+      searchTerm: filters.searchQuery,
+      setSearchTerm
     }}>
       {children}
     </ProductFilterContext.Provider>
