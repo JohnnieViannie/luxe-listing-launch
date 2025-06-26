@@ -1,4 +1,3 @@
-
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
@@ -22,17 +21,38 @@ class Product(models.Model):
         ('beauty', 'Beauty'),
     ]
     
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('published', 'Published'),
+        ('hidden', 'Hidden'),
+    ]
+    
+    VISIBILITY_CHOICES = [
+        ('public', 'Public'),
+        ('private', 'Private'),
+        ('login-only', 'Login Only'),
+    ]
+    
     name = models.CharField(max_length=200)
     brand = models.CharField(max_length=100, default='LUXE')
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='women')
     price = models.DecimalField(max_digits=10, decimal_places=2)
+    discount_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     description = models.TextField()
     specifications = models.JSONField(default=dict, blank=True)
     sizes = models.JSONField(default=list, blank=True)
     colors = models.JSONField(default=list, blank=True)
+    tags = models.JSONField(default=list, blank=True)
     stock_quantity = models.IntegerField(default=0)
     is_active = models.BooleanField(default=True)
     featured = models.BooleanField(default=False)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    visibility = models.CharField(max_length=20, choices=VISIBILITY_CHOICES, default='public')
+    video_url = models.URLField(blank=True)
+    weight = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    length = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    width = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    height = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -41,6 +61,18 @@ class Product(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+
+    @property
+    def price_ugx(self):
+        """Convert USD to UGX (approximate rate: 1 USD = 3700 UGX)"""
+        return int(float(self.price) * 3700)
+    
+    @property
+    def discount_price_ugx(self):
+        """Convert discount price to UGX"""
+        if self.discount_price:
+            return int(float(self.discount_price) * 3700)
+        return None
 
 class ProductImage(models.Model):
     product = models.ForeignKey(Product, related_name='images', on_delete=models.CASCADE)

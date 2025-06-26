@@ -10,18 +10,35 @@ from .serializers import (
 )
 
 class ProductViewSet(viewsets.ModelViewSet):
-    queryset = Product.objects.filter(is_active=True).prefetch_related('images')
+    queryset = Product.objects.all().prefetch_related('images')
     serializer_class = ProductSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['category', 'brand', 'featured']
-    search_fields = ['name', 'description', 'brand']
-    ordering_fields = ['price', 'created_at', 'name']
+    filterset_fields = ['category', 'brand', 'featured', 'status', 'visibility']
+    search_fields = ['name', 'description', 'brand', 'tags']
+    ordering_fields = ['price', 'created_at', 'name', 'stock_quantity']
     ordering = ['-created_at']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        # Filter by visibility and status if needed
+        if self.action == 'list':
+            # Only show published and public products in list view by default
+            return queryset.filter(status='published', visibility='public', is_active=True)
+        return queryset
 
     @action(detail=False, methods=['get'])
     def featured(self, request):
-        featured_products = self.queryset.filter(featured=True)
+        featured_products = self.get_queryset().filter(
+            featured=True, status='published', is_active=True
+        )
         serializer = self.get_serializer(featured_products, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def admin_list(self, request):
+        """Get all products for admin panel (regardless of status/visibility)"""
+        all_products = Product.objects.all().prefetch_related('images')
+        serializer = self.get_serializer(all_products, many=True)
         return Response(serializer.data)
 
 class CategoryViewSet(viewsets.ReadOnlyModelViewSet):

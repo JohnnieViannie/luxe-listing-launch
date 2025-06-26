@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Trash2, Package, Users, ShoppingCart, DollarSign, Eye, CheckCircle, XCircle } from "lucide-react";
 import AdminSidebar from "@/components/AdminSidebar";
+import ProductFormModal from "@/components/ProductFormModal";
 
 interface Product {
   id: number;
@@ -313,76 +314,10 @@ const Admin = () => {
 
   const renderProducts = () => (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Add New Product</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleAddProduct} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="name">Product Name</Label>
-                <Input
-                  id="name"
-                  value={newProduct.name}
-                  onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="brand">Brand</Label>
-                <Input
-                  id="brand"
-                  value={newProduct.brand}
-                  onChange={(e) => setNewProduct({...newProduct, brand: e.target.value})}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="price">Price ($)</Label>
-                <Input
-                  id="price"
-                  type="number"
-                  step="0.01"
-                  value={newProduct.price}
-                  onChange={(e) => setNewProduct({...newProduct, price: e.target.value})}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="category">Category</Label>
-                <Input
-                  id="category"
-                  value={newProduct.category}
-                  onChange={(e) => setNewProduct({...newProduct, category: e.target.value})}
-                  required
-                />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="image">Image URL</Label>
-              <Input
-                id="image"
-                value={newProduct.image}
-                onChange={(e) => setNewProduct({...newProduct, image: e.target.value})}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="description">Description</Label>
-              <Input
-                id="description"
-                value={newProduct.description}
-                onChange={(e) => setNewProduct({...newProduct, description: e.target.value})}
-                required
-              />
-            </div>
-            <Button type="submit" className="bg-black hover:bg-gray-800">
-              Add Product
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Products Management</h2>
+        <ProductFormModal onProductAdded={fetchData} />
+      </div>
 
       <Card>
         <CardHeader>
