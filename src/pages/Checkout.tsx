@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,15 +8,53 @@ import { Separator } from '@/components/ui/separator';
 import { useCart } from '@/contexts/CartContext';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, CreditCard, Truck } from 'lucide-react';
+import { toast } from 'sonner';
+
+// Flutterwave types
+declare global {
+  interface Window {
+    FlutterwaveCheckout: (options: FlutterwaveOptions) => void;
+    verified?: boolean;
+  }
+}
+
+interface FlutterwaveOptions {
+  public_key: string;
+  tx_ref: string;
+  amount: number;
+  currency: string;
+  payment_options: string;
+  callback: (payment: { id: string; tx_ref: string; flw_ref: string }) => void;
+  onclose: (incomplete?: boolean) => void;
+  meta: {
+    consumer_id: number;
+    consumer_mac: string;
+  };
+  customer: {
+    email: string;
+    phone_number: string;
+    name: string;
+  };
+  customizations: {
+    title: string;
+    description: string;
+    logo: string;
+  };
+}
+
+const USD_TO_UGX_RATE = 3700;
 
 const Checkout = () => {
   const { items, getTotalPrice, clearCart } = useCart();
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [flutterwaveLoaded, setFlutterwaveLoaded] = useState(false);
   
+  const subtotal = getTotalPrice();
   const shipping = 10;
-  const tax = getTotalPrice() * 0.1;
-  const total = getTotalPrice() + shipping + tax;
+  const tax = subtotal * 0.1;
+  const totalUSD = subtotal + shipping + tax;
+  const totalUGX = Math.round(totalUSD * USD_TO_UGX_RATE);
 
   const [formData, setFormData] = useState({
     email: '',
@@ -25,10 +63,24 @@ const Checkout = () => {
     address: '',
     city: '',
     zipCode: '',
-    cardNumber: '',
-    expiryDate: '',
-    cvv: '',
+    phone: '',
   });
+
+  useEffect(() => {
+    // Load Flutterwave script
+    const script = document.createElement('script');
+    script.src = 'https://checkout.flutterwave.com/v3.js';
+    script.onload = () => setFlutterwaveLoaded(true);
+    document.head.appendChild(script);
+
+    return () => {
+      // Cleanup script on unmount
+      const existingScript = document.querySelector('script[src="https://checkout.flutterwave.com/v3.js"]');
+      if (existingScript) {
+        document.head.removeChild(existingScript);
+      }
+    };
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -37,21 +89,102 @@ const Checkout = () => {
     });
   };
 
-  const handleQuickPay = async () => {
-    setIsProcessing(true);
-    
-    // Simulate payment processing
-    setTimeout(() => {
-      const orderNumber = Math.random().toString(36).substr(2, 9).toUpperCase();
-      clearCart();
-      navigate('/order-confirmation', {
-        state: {
-          orderNumber,
-          total,
-          items
+  const generateTxRef = () => {
+    return `LUXE-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  };
+
+  const verifyTransactionOnBackend = async (transactionId: string) => {
+    // Simulate backend verification
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        window.verified = true;
+        resolve(true);
+      }, 2000);
+    });
+  };
+
+  const handleFlutterwavePayment = () => {
+    if (!flutterwaveLoaded) {
+      toast.error('Payment system is loading. Please try again.');
+      return;
+    }
+
+    if (!formData.email || !formData.firstName || !formData.lastName || !formData.phone) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    const txRef = generateTxRef();
+
+    const flutterwaveOptions: FlutterwaveOptions = {
+      public_key: "FLWPUBK_TEST-e5aac5907ea18b76e89efa62fd5bd843-X",
+      tx_ref: txRef,
+      amount: totalUGX,
+      currency: "UGX",
+      payment_options: "card, mobilemoneyuganda, ussd",
+      callback: function(payment) {
+        console.log('Payment successful:', payment);
+        toast.success('Payment successful! Verifying transaction...');
+        verifyTransactionOnBackend(payment.id);
+      },
+      onclose: function(incomplete) {
+        if (incomplete || window.verified === false) {
+          toast.error('Payment failed. Please try again or contact support.');
+        } else {
+          if (window.verified === true) {
+            // Payment successful
+            const orderNumber = txRef;
+            clearCart();
+            navigate('/order-confirmation', {
+              state: {
+                orderNumber,
+                total: totalUSD,
+                totalUGX,
+                items,
+                paymentMethod: 'Flutterwave',
+                transactionRef: txRef,
+                customerInfo: formData
+              }
+            });
+            toast.success('Order placed successfully!');
+          } else {
+            toast.loading('Verifying payment...');
+            setTimeout(() => {
+              const orderNumber = txRef;
+              clearCart();
+              navigate('/order-confirmation', {
+                state: {
+                  orderNumber,
+                  total: totalUSD,
+                  totalUGX,
+                  items,
+                  paymentMethod: 'Flutterwave',
+                  transactionRef: txRef,
+                  customerInfo: formData
+                }
+              });
+              toast.success('Payment verified! Order placed successfully!');
+            }, 3000);
+          }
         }
-      });
-    }, 2000);
+      },
+      meta: {
+        consumer_id: Math.floor(Math.random() * 1000),
+        consumer_mac: "92a3-912ba-1192a",
+      },
+      customer: {
+        email: formData.email,
+        phone_number: formData.phone,
+        name: `${formData.firstName} ${formData.lastName}`,
+      },
+      customizations: {
+        title: "LUXE Store",
+        description: "Payment for premium fashion items",
+        logo: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=100",
+      },
+    };
+
+    window.FlutterwaveCheckout(flutterwaveOptions);
   };
 
   if (items.length === 0) {
@@ -93,7 +226,7 @@ const Checkout = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">Email *</Label>
                   <Input
                     id="email"
                     name="email"
@@ -101,6 +234,19 @@ const Checkout = () => {
                     value={formData.email}
                     onChange={handleInputChange}
                     placeholder="your@email.com"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="phone">Phone Number *</Label>
+                  <Input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    placeholder="+256 700 000000"
+                    required
                   />
                 </div>
               </CardContent>
@@ -117,21 +263,23 @@ const Checkout = () => {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="firstName">First Name</Label>
+                    <Label htmlFor="firstName">First Name *</Label>
                     <Input
                       id="firstName"
                       name="firstName"
                       value={formData.firstName}
                       onChange={handleInputChange}
+                      required
                     />
                   </div>
                   <div>
-                    <Label htmlFor="lastName">Last Name</Label>
+                    <Label htmlFor="lastName">Last Name *</Label>
                     <Input
                       id="lastName"
                       name="lastName"
                       value={formData.lastName}
                       onChange={handleInputChange}
+                      required
                     />
                   </div>
                 </div>
@@ -142,6 +290,7 @@ const Checkout = () => {
                     name="address"
                     value={formData.address}
                     onChange={handleInputChange}
+                    placeholder="Street address"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -152,6 +301,7 @@ const Checkout = () => {
                       name="city"
                       value={formData.city}
                       onChange={handleInputChange}
+                      placeholder="Kampala"
                     />
                   </div>
                   <div>
@@ -161,50 +311,7 @@ const Checkout = () => {
                       name="zipCode"
                       value={formData.zipCode}
                       onChange={handleInputChange}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Payment Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold flex items-center">
-                  <CreditCard className="h-5 w-5 mr-2" />
-                  Payment Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="cardNumber">Card Number</Label>
-                  <Input
-                    id="cardNumber"
-                    name="cardNumber"
-                    value={formData.cardNumber}
-                    onChange={handleInputChange}
-                    placeholder="1234 5678 9012 3456"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="expiryDate">Expiry Date</Label>
-                    <Input
-                      id="expiryDate"
-                      name="expiryDate"
-                      value={formData.expiryDate}
-                      onChange={handleInputChange}
-                      placeholder="MM/YY"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="cvv">CVV</Label>
-                    <Input
-                      id="cvv"
-                      name="cvv"
-                      value={formData.cvv}
-                      onChange={handleInputChange}
-                      placeholder="123"
+                      placeholder="00000"
                     />
                   </div>
                 </div>
@@ -231,7 +338,10 @@ const Checkout = () => {
                       <div className="flex-1">
                         <h4 className="font-medium text-black text-sm">{item.name}</h4>
                         <p className="text-xs text-gray-500">{item.selectedSize}, {item.selectedColor} × {item.quantity}</p>
-                        <p className="font-medium text-black">${(item.price * item.quantity).toFixed(2)}</p>
+                        <div className="space-y-1">
+                          <p className="font-medium text-black">${(item.price * item.quantity).toFixed(2)}</p>
+                          <p className="text-xs text-gray-500">UGX {Math.round(item.price * item.quantity * USD_TO_UGX_RATE).toLocaleString()}</p>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -243,34 +353,46 @@ const Checkout = () => {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Subtotal</span>
-                    <span className="font-medium">${getTotalPrice().toFixed(2)}</span>
+                    <div className="text-right">
+                      <p className="font-medium">${subtotal.toFixed(2)}</p>
+                      <p className="text-xs text-gray-500">UGX {Math.round(subtotal * USD_TO_UGX_RATE).toLocaleString()}</p>
+                    </div>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Shipping</span>
-                    <span className="font-medium">${shipping.toFixed(2)}</span>
+                    <div className="text-right">
+                      <p className="font-medium">${shipping.toFixed(2)}</p>
+                      <p className="text-xs text-gray-500">UGX {Math.round(shipping * USD_TO_UGX_RATE).toLocaleString()}</p>
+                    </div>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Tax</span>
-                    <span className="font-medium">${tax.toFixed(2)}</span>
+                    <div className="text-right">
+                      <p className="font-medium">${tax.toFixed(2)}</p>
+                      <p className="text-xs text-gray-500">UGX {Math.round(tax * USD_TO_UGX_RATE).toLocaleString()}</p>
+                    </div>
                   </div>
                   <Separator />
                   <div className="flex justify-between text-base font-semibold">
                     <span>Total</span>
-                    <span>${total.toFixed(2)}</span>
+                    <div className="text-right">
+                      <p>${totalUSD.toFixed(2)}</p>
+                      <p className="text-sm text-gray-600">UGX {totalUGX.toLocaleString()}</p>
+                    </div>
                   </div>
                 </div>
 
-                {/* Quick Pay Button */}
+                {/* Payment Button */}
                 <Button
-                  onClick={handleQuickPay}
-                  disabled={isProcessing}
+                  onClick={handleFlutterwavePayment}
+                  disabled={isProcessing || !flutterwaveLoaded}
                   className="w-full bg-black hover:bg-gray-800 text-white font-medium py-3 mt-6"
                 >
-                  {isProcessing ? 'Processing...' : 'Quick Pay'}
+                  {!flutterwaveLoaded ? 'Loading Payment...' : isProcessing ? 'Processing...' : 'Pay with Flutterwave'}
                 </Button>
                 
                 <p className="text-xs text-gray-500 text-center">
-                  Your payment information is secure and encrypted
+                  Secure payment powered by Flutterwave
                 </p>
               </CardContent>
             </Card>

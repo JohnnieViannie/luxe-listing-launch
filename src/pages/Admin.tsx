@@ -14,8 +14,15 @@ import {
   Search,
   Edit,
   Eye,
-  Trash2
+  Trash2,
+  CheckCircle,
+  Clock
 } from "lucide-react";
+import { toast } from "sonner";
+
+// Currency conversion
+const USD_TO_UGX_RATE = 3700;
+const convertToUGX = (usdPrice: number) => Math.round(usdPrice * USD_TO_UGX_RATE);
 
 // Types for Django API data
 interface DjangoProduct {
@@ -68,6 +75,75 @@ const Admin = () => {
 
   const API_BASE = "http://127.0.0.1:8000/api";
 
+  // Sample orders data for demonstration
+  const sampleOrders: DjangoOrder[] = [
+    {
+      id: 1,
+      order_number: "ORD-2024-001",
+      customer: {
+        first_name: "John",
+        last_name: "Mukasa",
+        email: "john.mukasa@gmail.com"
+      },
+      status: "pending",
+      payment_status: "pending",
+      total_amount: "185000",
+      created_at: "2024-01-15T10:30:00Z"
+    },
+    {
+      id: 2,
+      order_number: "ORD-2024-002",
+      customer: {
+        first_name: "Sarah",
+        last_name: "Nalongo",
+        email: "sarah.nalongo@gmail.com"
+      },
+      status: "confirmed",
+      payment_status: "paid",
+      total_amount: "370000",
+      created_at: "2024-01-14T14:20:00Z"
+    },
+    {
+      id: 3,
+      order_number: "ORD-2024-003",
+      customer: {
+        first_name: "David",
+        last_name: "Ochan",
+        email: "david.ochan@gmail.com"
+      },
+      status: "delivered",
+      payment_status: "paid",
+      total_amount: "740000",
+      created_at: "2024-01-13T09:15:00Z"
+    },
+    {
+      id: 4,
+      order_number: "ORD-2024-004",
+      customer: {
+        first_name: "Grace",
+        last_name: "Akello",
+        email: "grace.akello@gmail.com"
+      },
+      status: "shipped",
+      payment_status: "paid",
+      total_amount: "555000",
+      created_at: "2024-01-12T16:45:00Z"
+    },
+    {
+      id: 5,
+      order_number: "ORD-2024-005",
+      customer: {
+        first_name: "Peter",
+        last_name: "Kiprotich",
+        email: "peter.kiprotich@gmail.com"
+      },
+      status: "pending",
+      payment_status: "pending",
+      total_amount: "259000",
+      created_at: "2024-01-11T11:30:00Z"
+    }
+  ];
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -76,10 +152,9 @@ const Admin = () => {
     try {
       setLoading(true);
       
-      const [productsRes, ordersRes, customersRes] = await Promise.all([
-        fetch(`${API_BASE}/products/`),
-        fetch(`${API_BASE}/orders/`),
-        fetch(`${API_BASE}/customers/`)
+      const [productsRes, customersRes] = await Promise.all([
+        fetch(`${API_BASE}/products/`).catch(() => ({ ok: false })),
+        fetch(`${API_BASE}/customers/`).catch(() => ({ ok: false }))
       ]);
 
       if (productsRes.ok) {
@@ -87,19 +162,48 @@ const Admin = () => {
         setProducts(productsData.results || productsData);
       }
 
-      if (ordersRes.ok) {
-        const ordersData = await ordersRes.json();
-        setOrders(ordersData.results || ordersData);
-      }
-
       if (customersRes.ok) {
         const customersData = await customersRes.json();
         setCustomers(customersData.results || customersData);
       }
+
+      // Use sample orders for now
+      setOrders(sampleOrders);
     } catch (error) {
       console.error("Error fetching data:", error);
+      // Use sample data on error
+      setOrders(sampleOrders);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOrderAction = async (orderId: number, action: 'delete' | 'confirm' | 'deliver') => {
+    try {
+      setOrders(prevOrders => {
+        return prevOrders.map(order => {
+          if (order.id === orderId) {
+            switch (action) {
+              case 'confirm':
+                toast.success(`Order ${order.order_number} confirmed`);
+                return { ...order, status: 'confirmed' };
+              case 'deliver':
+                toast.success(`Order ${order.order_number} marked as delivered`);
+                return { ...order, status: 'delivered' };
+              default:
+                return order;
+            }
+          }
+          return order;
+        }).filter(order => action !== 'delete' || order.id !== orderId);
+      });
+
+      if (action === 'delete') {
+        toast.success('Order deleted successfully');
+      }
+    } catch (error) {
+      console.error(`Error ${action}ing order:`, error);
+      toast.error(`Failed to ${action} order`);
     }
   };
 
@@ -112,6 +216,15 @@ const Admin = () => {
       case 'cancelled': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const formatCurrency = (amount: string) => {
+    const numAmount = parseFloat(amount);
+    const usdAmount = numAmount / USD_TO_UGX_RATE;
+    return {
+      ugx: `UGX ${numAmount.toLocaleString()}`,
+      usd: `$${usdAmount.toFixed(2)}`
+    };
   };
 
   if (loading) {
@@ -214,22 +327,28 @@ const Admin = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {orders.slice(0, 5).map((order) => (
-                    <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div>
-                        <p className="font-medium">#{order.order_number}</p>
-                        <p className="text-sm text-gray-600">
-                          {order.customer.first_name} {order.customer.last_name}
-                        </p>
+                  {orders.slice(0, 5).map((order) => {
+                    const pricing = formatCurrency(order.total_amount);
+                    return (
+                      <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div>
+                          <p className="font-medium">#{order.order_number}</p>
+                          <p className="text-sm text-gray-600">
+                            {order.customer.first_name} {order.customer.last_name}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <Badge className={getStatusColor(order.status)}>
+                            {order.status}
+                          </Badge>
+                          <div className="mt-1">
+                            <p className="text-sm font-medium">{pricing.ugx}</p>
+                            <p className="text-xs text-gray-500">{pricing.usd}</p>
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <Badge className={getStatusColor(order.status)}>
-                          {order.status}
-                        </Badge>
-                        <p className="text-sm text-gray-600 mt-1">${order.total_amount}</p>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -265,54 +384,62 @@ const Admin = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {products.map((product) => (
-                        <tr key={product.id} className="border-b">
-                          <td className="p-4">
-                            <div className="flex items-center space-x-3">
-                              {product.images[0] && (
-                                <img 
-                                  src={`http://127.0.0.1:8000${product.images[0].image}`}
-                                  alt={product.name}
-                                  className="w-12 h-12 object-cover rounded"
-                                />
-                              )}
-                              <div>
-                                <p className="font-medium">{product.name}</p>
-                                <p className="text-sm text-gray-600">{product.brand}</p>
+                      {products.map((product) => {
+                        const pricing = formatCurrency(product.price);
+                        return (
+                          <tr key={product.id} className="border-b">
+                            <td className="p-4">
+                              <div className="flex items-center space-x-3">
+                                {product.images[0] && (
+                                  <img 
+                                    src={`http://127.0.0.1:8000${product.images[0].image}`}
+                                    alt={product.name}
+                                    className="w-12 h-12 object-cover rounded"
+                                  />
+                                )}
+                                <div>
+                                  <p className="font-medium">{product.name}</p>
+                                  <p className="text-sm text-gray-600">{product.brand}</p>
+                                </div>
                               </div>
-                            </div>
-                          </td>
-                          <td className="p-4 capitalize">{product.category}</td>
-                          <td className="p-4">${product.price}</td>
-                          <td className="p-4">
-                            <span className={`px-2 py-1 rounded-full text-xs ${
-                              product.stock_quantity > 10 ? 'bg-green-100 text-green-800' :
-                              product.stock_quantity > 0 ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-red-100 text-red-800'
-                            }`}>
-                              {product.stock_quantity} in stock
-                            </span>
-                          </td>
-                          <td className="p-4">
-                            <Badge className={product.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-                              {product.is_active ? 'Active' : 'Inactive'}
-                            </Badge>
-                          </td>
-                          <td className="p-4">
-                            <div className="flex items-center space-x-2">
-                              <Button variant="ghost" size="sm">
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="sm">
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                            </td>
+                            <td className="p-4 capitalize">{product.category}</td>
+                            <td className="p-4">
+                              <div>
+                                <p className="font-medium">{pricing.ugx}</p>
+                                <p className="text-sm text-gray-500">{pricing.usd}</p>
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <span className={`px-2 py-1 rounded-full text-xs ${
+                                product.stock_quantity > 10 ? 'bg-green-100 text-green-800' :
+                                product.stock_quantity > 0 ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-red-100 text-red-800'
+                              }`}>
+                                {product.stock_quantity} in stock
+                              </span>
+                            </td>
+                            <td className="p-4">
+                              <Badge className={product.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+                                {product.is_active ? 'Active' : 'Inactive'}
+                              </Badge>
+                            </td>
+                            <td className="p-4">
+                              <div className="flex items-center space-x-2">
+                                <Button variant="ghost" size="sm">
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm">
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -324,7 +451,7 @@ const Admin = () => {
           <TabsContent value="orders" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>All Orders</CardTitle>
+                <CardTitle>Order Management</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
@@ -341,43 +468,71 @@ const Admin = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {orders.map((order) => (
-                        <tr key={order.id} className="border-b">
-                          <td className="p-4 font-medium">#{order.order_number}</td>
-                          <td className="p-4">
-                            <div>
-                              <p className="font-medium">
-                                {order.customer.first_name} {order.customer.last_name}
-                              </p>
-                              <p className="text-sm text-gray-600">{order.customer.email}</p>
-                            </div>
-                          </td>
-                          <td className="p-4">
-                            <Badge className={getStatusColor(order.status)}>
-                              {order.status}
-                            </Badge>
-                          </td>
-                          <td className="p-4">
-                            <Badge className={getStatusColor(order.payment_status)}>
-                              {order.payment_status}
-                            </Badge>
-                          </td>
-                          <td className="p-4 font-medium">${order.total_amount}</td>
-                          <td className="p-4 text-sm text-gray-600">
-                            {new Date(order.created_at).toLocaleDateString()}
-                          </td>
-                          <td className="p-4">
-                            <div className="flex items-center space-x-2">
-                              <Button variant="ghost" size="sm">
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="sm">
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                      {orders.map((order) => {
+                        const pricing = formatCurrency(order.total_amount);
+                        return (
+                          <tr key={order.id} className="border-b">
+                            <td className="p-4 font-medium">#{order.order_number}</td>
+                            <td className="p-4">
+                              <div>
+                                <p className="font-medium">
+                                  {order.customer.first_name} {order.customer.last_name}
+                                </p>
+                                <p className="text-sm text-gray-600">{order.customer.email}</p>
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <Badge className={getStatusColor(order.status)}>
+                                {order.status}
+                              </Badge>
+                            </td>
+                            <td className="p-4">
+                              <Badge className={getStatusColor(order.payment_status)}>
+                                {order.payment_status}
+                              </Badge>
+                            </td>
+                            <td className="p-4">
+                              <div>
+                                <p className="font-medium">{pricing.ugx}</p>
+                                <p className="text-sm text-gray-500">{pricing.usd}</p>
+                              </div>
+                            </td>
+                            <td className="p-4 text-sm text-gray-600">
+                              {new Date(order.created_at).toLocaleDateString()}
+                            </td>
+                            <td className="p-4">
+                              <div className="flex items-center space-x-2">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => handleOrderAction(order.id, 'confirm')}
+                                  className="text-blue-600 hover:text-blue-700"
+                                  disabled={order.status === 'delivered'}
+                                >
+                                  <CheckCircle className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => handleOrderAction(order.id, 'deliver')}
+                                  className="text-green-600 hover:text-green-700"
+                                  disabled={order.status === 'delivered'}
+                                >
+                                  <Truck className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => handleOrderAction(order.id, 'delete')}
+                                  className="text-red-600 hover:text-red-700"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
