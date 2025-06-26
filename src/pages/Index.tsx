@@ -48,7 +48,7 @@ const Index = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showQuickView, setShowQuickView] = useState(false);
   const { getTotalItems } = useCart();
-  const { filteredProducts, setProducts: setFilterProducts } = useProductFilter();
+  const { filteredProducts, searchTerm, setSearchTerm } = useProductFilter();
 
   const API_BASE = "http://127.0.0.1:8000/api";
 
@@ -140,11 +140,6 @@ const Index = () => {
     fetchProducts();
   }, []);
 
-  useEffect(() => {
-    // Update filter context with products
-    setFilterProducts(products);
-  }, [products, setFilterProducts]);
-
   const fetchProducts = async () => {
     try {
       setLoading(true);
@@ -229,7 +224,7 @@ const Index = () => {
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar Filters */}
           <div className="lg:w-1/4">
-            <ProductFilters />
+            <ProductFilters products={products} />
           </div>
 
           {/* Products Grid */}
