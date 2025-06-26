@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -152,19 +151,26 @@ const Admin = () => {
     try {
       setLoading(true);
       
-      const [productsRes, customersRes] = await Promise.all([
-        fetch(`${API_BASE}/products/`).catch(() => ({ ok: false })),
-        fetch(`${API_BASE}/customers/`).catch(() => ({ ok: false }))
-      ]);
-
-      if (productsRes.ok) {
-        const productsData = await productsRes.json();
-        setProducts(productsData.results || productsData);
+      // Fetch products
+      try {
+        const productsRes = await fetch(`${API_BASE}/products/`);
+        if (productsRes.ok) {
+          const productsData = await productsRes.json();
+          setProducts(productsData.results || productsData);
+        }
+      } catch (error) {
+        console.error("Error fetching products:", error);
       }
 
-      if (customersRes.ok) {
-        const customersData = await customersRes.json();
-        setCustomers(customersData.results || customersData);
+      // Fetch customers
+      try {
+        const customersRes = await fetch(`${API_BASE}/customers/`);
+        if (customersRes.ok) {
+          const customersData = await customersRes.json();
+          setCustomers(customersData.results || customersData);
+        }
+      } catch (error) {
+        console.error("Error fetching customers:", error);
       }
 
       // Use sample orders for now
