@@ -1,5 +1,7 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -12,16 +14,8 @@ import {
   Search,
   Edit,
   Eye,
-  Trash2,
-  LayoutDashboard,
-  LogOut,
-  Check,
-  X
+  Trash2
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import AdminLogin from "../components/AdminLogin";
-import AddProductModal from "../components/AddProductModal";
-import { useToast } from "@/hooks/use-toast";
 
 // Types for Django API data
 interface DjangoProduct {
@@ -70,114 +64,21 @@ const Admin = () => {
   const [orders, setOrders] = useState<DjangoOrder[]>([]);
   const [customers, setCustomers] = useState<DjangoCustomer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeSection, setActiveSection] = useState("overview");
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [showAddProduct, setShowAddProduct] = useState(false);
-  const navigate = useNavigate();
-  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState("overview");
 
   const API_BASE = "http://127.0.0.1:8000/api";
 
-  // Sample data for demonstration
-  const sampleOrders: DjangoOrder[] = [
-    {
-      id: 1,
-      order_number: "ORD-2024-001",
-      customer: { first_name: "John", last_name: "Doe", email: "john@example.com" },
-      status: "pending",
-      payment_status: "pending",
-      total_amount: "70000",
-      created_at: "2024-01-15T10:30:00Z"
-    },
-    {
-      id: 2,
-      order_number: "ORD-2024-002",
-      customer: { first_name: "Jane", last_name: "Smith", email: "jane@example.com" },
-      status: "confirmed",
-      payment_status: "paid",
-      total_amount: "150000",
-      created_at: "2024-01-14T14:20:00Z"
-    },
-    {
-      id: 3,
-      order_number: "ORD-2024-003",
-      customer: { first_name: "Mike", last_name: "Johnson", email: "mike@example.com" },
-      status: "shipped",
-      payment_status: "paid",
-      total_amount: "250000",
-      created_at: "2024-01-13T09:15:00Z"
-    },
-    {
-      id: 4,
-      order_number: "ORD-2024-004",
-      customer: { first_name: "Sarah", last_name: "Wilson", email: "sarah@example.com" },
-      status: "delivered",
-      payment_status: "paid",
-      total_amount: "100000",
-      created_at: "2024-01-12T16:45:00Z"
-    },
-    {
-      id: 5,
-      order_number: "ORD-2024-005",
-      customer: { first_name: "David", last_name: "Brown", email: "david@example.com" },
-      status: "processing",
-      payment_status: "paid",
-      total_amount: "320000",
-      created_at: "2024-01-11T11:30:00Z"
-    }
-  ];
-
-  // USD to UGX conversion rate (approximate)
-  const UGX_TO_USD_RATE = 3700;
-
-  const convertToUSD = (ugxAmount: string | number): string => {
-    const ugx = typeof ugxAmount === 'string' ? parseFloat(ugxAmount) : ugxAmount;
-    const usd = ugx / UGX_TO_USD_RATE;
-    return usd.toFixed(2);
-  };
-
-  const formatCurrency = (amount: string | number, showBoth: boolean = true) => {
-    const ugx = typeof amount === 'string' ? parseFloat(amount) : amount;
-    const formattedUGX = `UGX ${ugx.toLocaleString()}`;
-    
-    if (showBoth) {
-      const usd = convertToUSD(ugx);
-      return `${formattedUGX} ($${usd})`;
-    }
-    return formattedUGX;
-  };
-
   useEffect(() => {
-    // Check if admin is already logged in
-    const adminAuth = localStorage.getItem('adminAuth');
-    if (adminAuth === 'true') {
-      setIsAuthenticated(true);
-      fetchData();
-    } else {
-      setLoading(false);
-    }
+    fetchData();
   }, []);
-
-  const handleLogin = (success: boolean) => {
-    if (success) {
-      setIsAuthenticated(true);
-      localStorage.setItem('adminAuth', 'true');
-      fetchData();
-    }
-  };
-
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    localStorage.removeItem('adminAuth');
-    navigate('/');
-  };
 
   const fetchData = async () => {
     try {
       setLoading(true);
       
-      const [productsRes, customersRes] = await Promise.all([
+      const [productsRes, ordersRes, customersRes] = await Promise.all([
         fetch(`${API_BASE}/products/`),
+        fetch(`${API_BASE}/orders/`),
         fetch(`${API_BASE}/customers/`)
       ]);
 
@@ -186,58 +87,19 @@ const Admin = () => {
         setProducts(productsData.results || productsData);
       }
 
+      if (ordersRes.ok) {
+        const ordersData = await ordersRes.json();
+        setOrders(ordersData.results || ordersData);
+      }
+
       if (customersRes.ok) {
         const customersData = await customersRes.json();
         setCustomers(customersData.results || customersData);
       }
-
-      // Use sample orders for now
-      setOrders(sampleOrders);
     } catch (error) {
       console.error("Error fetching data:", error);
-      // Use sample data as fallback
-      setOrders(sampleOrders);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleOrderAction = async (orderId: number, action: 'delete' | 'delivered' | 'confirmed') => {
-    try {
-      if (action === 'delete') {
-        setOrders(prev => prev.filter(order => order.id !== orderId));
-        toast({
-          title: "Order Deleted",
-          description: "Order has been successfully deleted.",
-        });
-      } else if (action === 'delivered') {
-        setOrders(prev => prev.map(order => 
-          order.id === orderId 
-            ? { ...order, status: 'delivered', payment_status: 'paid' }
-            : order
-        ));
-        toast({
-          title: "Order Updated",
-          description: "Order marked as delivered.",
-        });
-      } else if (action === 'confirmed') {
-        setOrders(prev => prev.map(order => 
-          order.id === orderId 
-            ? { ...order, status: 'confirmed', payment_status: 'paid' }
-            : order
-        ));
-        toast({
-          title: "Order Updated",
-          description: "Order marked as confirmed.",
-        });
-      }
-    } catch (error) {
-      console.error("Error updating order:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update order. Please try again.",
-        variant: "destructive",
-      });
     }
   };
 
@@ -248,21 +110,9 @@ const Admin = () => {
       case 'shipped': return 'bg-purple-100 text-purple-800';
       case 'delivered': return 'bg-green-100 text-green-800';
       case 'cancelled': return 'bg-red-100 text-red-800';
-      case 'processing': return 'bg-indigo-100 text-indigo-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
-
-  const sidebarItems = [
-    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-    { id: 'products', label: 'Products', icon: Package },
-    { id: 'orders', label: 'Orders', icon: ShoppingCart },
-    { id: 'customers', label: 'Customers', icon: Users }
-  ];
-
-  if (!isAuthenticated) {
-    return <AdminLogin onLogin={handleLogin} loading={loading} />;
-  }
 
   if (loading) {
     return (
@@ -276,221 +126,202 @@ const Admin = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <div className="w-64 bg-white shadow-lg">
-        <div className="p-6 border-b">
-          <h1 className="text-2xl font-bold text-gray-900">LUXE Admin</h1>
-          <p className="text-sm text-gray-600">E-commerce Dashboard</p>
-        </div>
-        
-        <nav className="mt-6">
-          {sidebarItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setActiveSection(item.id)}
-              className={`w-full flex items-center px-6 py-3 text-left hover:bg-gray-100 transition-colors ${
-                activeSection === item.id ? 'bg-gray-100 border-r-2 border-black' : ''
-              }`}
-            >
-              <item.icon className="h-5 w-5 mr-3" />
-              <span className="font-medium">{item.label}</span>
-            </button>
-          ))}
-        </nav>
-
-        <div className="absolute bottom-6 left-6">
-          <Button onClick={handleLogout} variant="outline" className="flex items-center">
-            <LogOut className="h-4 w-4 mr-2" />
-            Logout
-          </Button>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-6">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">LUXE Admin Dashboard</h1>
+              <p className="text-gray-600">Manage your e-commerce platform</p>
+            </div>
+            <Button className="bg-black hover:bg-gray-800">
+              <Plus className="h-4 w-4 mr-2" />
+              Add New Product
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-x-auto">
-        <div className="p-8">
-          {/* Header */}
-          <div className="flex justify-between items-center mb-8">
-            <div>
-              <h2 className="text-3xl font-bold text-gray-900 capitalize">{activeSection}</h2>
-              <p className="text-gray-600">Manage your e-commerce platform</p>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="products">Products</TabsTrigger>
+            <TabsTrigger value="orders">Orders</TabsTrigger>
+            <TabsTrigger value="customers">Customers</TabsTrigger>
+          </TabsList>
+
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Total Products</p>
+                      <p className="text-3xl font-bold text-gray-900">{products.length}</p>
+                    </div>
+                    <Package className="h-8 w-8 text-blue-600" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Total Orders</p>
+                      <p className="text-3xl font-bold text-gray-900">{orders.length}</p>
+                    </div>
+                    <ShoppingCart className="h-8 w-8 text-green-600" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Total Customers</p>
+                      <p className="text-3xl font-bold text-gray-900">{customers.length}</p>
+                    </div>
+                    <Users className="h-8 w-8 text-purple-600" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Active Products</p>
+                      <p className="text-3xl font-bold text-gray-900">
+                        {products.filter(p => p.is_active).length}
+                      </p>
+                    </div>
+                    <Truck className="h-8 w-8 text-orange-600" />
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-            {activeSection === 'products' && (
-              <Button onClick={() => setShowAddProduct(true)} className="bg-black hover:bg-gray-800">
-                <Plus className="h-4 w-4 mr-2" />
-                Add New Product
-              </Button>
-            )}
-          </div>
 
-          {/* Content based on active section */}
-          {activeSection === 'overview' && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
+            {/* Recent Orders */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Orders</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {orders.slice(0, 5).map((order) => (
+                    <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div>
-                        <p className="text-sm font-medium text-gray-600">Total Products</p>
-                        <p className="text-3xl font-bold text-gray-900">{products.length}</p>
-                      </div>
-                      <Package className="h-8 w-8 text-blue-600" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600">Total Orders</p>
-                        <p className="text-3xl font-bold text-gray-900">{orders.length}</p>
-                      </div>
-                      <ShoppingCart className="h-8 w-8 text-green-600" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600">Total Customers</p>
-                        <p className="text-3xl font-bold text-gray-900">{customers.length}</p>
-                      </div>
-                      <Users className="h-8 w-8 text-purple-600" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600">Revenue (UGX)</p>
-                        <p className="text-xl font-bold text-gray-900">
-                          {formatCurrency(orders.reduce((sum, order) => sum + parseFloat(order.total_amount), 0), false)}
+                        <p className="font-medium">#{order.order_number}</p>
+                        <p className="text-sm text-gray-600">
+                          {order.customer.first_name} {order.customer.last_name}
                         </p>
                       </div>
-                      <Truck className="h-8 w-8 text-orange-600" />
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Recent Orders */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Orders</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {orders.slice(0, 5).map((order) => (
-                      <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div>
-                          <p className="font-medium">#{order.order_number}</p>
-                          <p className="text-sm text-gray-600">
-                            {order.customer.first_name} {order.customer.last_name}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <Badge className={getStatusColor(order.status)}>
-                            {order.status}
-                          </Badge>
-                          <p className="text-sm text-gray-600 mt-1">{formatCurrency(order.total_amount)}</p>
-                        </div>
+                      <div className="text-right">
+                        <Badge className={getStatusColor(order.status)}>
+                          {order.status}
+                        </Badge>
+                        <p className="text-sm text-gray-600 mt-1">${order.total_amount}</p>
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-          {activeSection === 'products' && (
-            <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center space-x-4">
-                  <div className="relative">
-                    <Search className="h-4 w-4 absolute left-3 top-3 text-gray-400" />
-                    <Input placeholder="Search products..." className="pl-10 w-64" />
-                  </div>
+          {/* Products Tab */}
+          <TabsContent value="products" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center space-x-4">
+                <div className="relative">
+                  <Search className="h-4 w-4 absolute left-3 top-3 text-gray-400" />
+                  <Input placeholder="Search products..." className="pl-10 w-64" />
                 </div>
               </div>
-
-              <Card>
-                <CardContent className="p-0">
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="border-b bg-gray-50">
-                        <tr>
-                          <th className="text-left p-4">Product</th>
-                          <th className="text-left p-4">Category</th>
-                          <th className="text-left p-4">Price</th>
-                          <th className="text-left p-4">Stock</th>
-                          <th className="text-left p-4">Status</th>
-                          <th className="text-left p-4">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {products.map((product) => (
-                          <tr key={product.id} className="border-b">
-                            <td className="p-4">
-                              <div className="flex items-center space-x-3">
-                                {product.images[0] && (
-                                  <img 
-                                    src={`http://127.0.0.1:8000${product.images[0].image}`}
-                                    alt={product.name}
-                                    className="w-12 h-12 object-cover rounded"
-                                  />
-                                )}
-                                <div>
-                                  <p className="font-medium">{product.name}</p>
-                                  <p className="text-sm text-gray-600">{product.brand}</p>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="p-4 capitalize">{product.category}</td>
-                            <td className="p-4">{formatCurrency(product.price)}</td>
-                            <td className="p-4">
-                              <span className={`px-2 py-1 rounded-full text-xs ${
-                                product.stock_quantity > 10 ? 'bg-green-100 text-green-800' :
-                                product.stock_quantity > 0 ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-red-100 text-red-800'
-                              }`}>
-                                {product.stock_quantity} in stock
-                              </span>
-                            </td>
-                            <td className="p-4">
-                              <Badge className={product.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-                                {product.is_active ? 'Active' : 'Inactive'}
-                              </Badge>
-                            </td>
-                            <td className="p-4">
-                              <div className="flex items-center space-x-2">
-                                <Button variant="ghost" size="sm">
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="sm">
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
+              <Button className="bg-black hover:bg-gray-800">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Product
+              </Button>
             </div>
-          )}
 
-          {activeSection === 'orders' && (
+            <Card>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="border-b bg-gray-50">
+                      <tr>
+                        <th className="text-left p-4">Product</th>
+                        <th className="text-left p-4">Category</th>
+                        <th className="text-left p-4">Price</th>
+                        <th className="text-left p-4">Stock</th>
+                        <th className="text-left p-4">Status</th>
+                        <th className="text-left p-4">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {products.map((product) => (
+                        <tr key={product.id} className="border-b">
+                          <td className="p-4">
+                            <div className="flex items-center space-x-3">
+                              {product.images[0] && (
+                                <img 
+                                  src={`http://127.0.0.1:8000${product.images[0].image}`}
+                                  alt={product.name}
+                                  className="w-12 h-12 object-cover rounded"
+                                />
+                              )}
+                              <div>
+                                <p className="font-medium">{product.name}</p>
+                                <p className="text-sm text-gray-600">{product.brand}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-4 capitalize">{product.category}</td>
+                          <td className="p-4">${product.price}</td>
+                          <td className="p-4">
+                            <span className={`px-2 py-1 rounded-full text-xs ${
+                              product.stock_quantity > 10 ? 'bg-green-100 text-green-800' :
+                              product.stock_quantity > 0 ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {product.stock_quantity} in stock
+                            </span>
+                          </td>
+                          <td className="p-4">
+                            <Badge className={product.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+                              {product.is_active ? 'Active' : 'Inactive'}
+                            </Badge>
+                          </td>
+                          <td className="p-4">
+                            <div className="flex items-center space-x-2">
+                              <Button variant="ghost" size="sm">
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm">
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Orders Tab */}
+          <TabsContent value="orders" className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>All Orders</CardTitle>
@@ -531,44 +362,17 @@ const Admin = () => {
                               {order.payment_status}
                             </Badge>
                           </td>
-                          <td className="p-4 font-medium">{formatCurrency(order.total_amount)}</td>
+                          <td className="p-4 font-medium">${order.total_amount}</td>
                           <td className="p-4 text-sm text-gray-600">
                             {new Date(order.created_at).toLocaleDateString()}
                           </td>
                           <td className="p-4">
                             <div className="flex items-center space-x-2">
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => handleOrderAction(order.id, 'confirmed')}
-                                title="Mark as Confirmed"
-                                className="text-blue-600 hover:text-blue-700"
-                              >
-                                <Check className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => handleOrderAction(order.id, 'delivered')}
-                                title="Mark as Delivered"
-                                className="text-green-600 hover:text-green-700"
-                              >
-                                <Truck className="h-4 w-4" />
-                              </Button>
                               <Button variant="ghost" size="sm">
                                 <Eye className="h-4 w-4" />
                               </Button>
                               <Button variant="ghost" size="sm">
                                 <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="text-red-600 hover:text-red-700"
-                                onClick={() => handleOrderAction(order.id, 'delete')}
-                                title="Delete Order"
-                              >
-                                <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
                           </td>
@@ -579,9 +383,10 @@ const Admin = () => {
                 </div>
               </CardContent>
             </Card>
-          )}
+          </TabsContent>
 
-          {activeSection === 'customers' && (
+          {/* Customers Tab */}
+          <TabsContent value="customers" className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>All Customers</CardTitle>
@@ -633,17 +438,9 @@ const Admin = () => {
                 </div>
               </CardContent>
             </Card>
-          )}
-        </div>
+          </TabsContent>
+        </Tabs>
       </div>
-
-      {/* Add Product Modal */}
-      {showAddProduct && (
-        <AddProductModal 
-          onClose={() => setShowAddProduct(false)} 
-          onProductAdded={fetchData}
-        />
-      )}
     </div>
   );
 };
