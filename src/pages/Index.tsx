@@ -256,7 +256,41 @@ const ProductGrid = () => {
 const IndexContent = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { getTotalItems } = useCart();
+  const { toggleCategory, clearFilters, filters } = useProductFilter();
   const navigate = useNavigate();
+
+  // Category mapping for navigation
+  const categoryMap: { [key: string]: string } = {
+    'NEW': 'new',
+    'CLOTHING': 'shirts',
+    'SHOES': 'shoes',
+    'ACCESSORIES': 'accessories',
+    'DESIGNERS': 'designer',
+    'CURATED': 'curated',
+    'SALE': 'sale'
+  };
+
+  const handleCategoryClick = (categoryName: string) => {
+    if (categoryName === 'ADMIN') {
+      navigate('/admin');
+      return;
+    }
+
+    const categoryValue = categoryMap[categoryName];
+    if (categoryValue) {
+      // Clear existing filters first
+      clearFilters();
+      // Then apply the selected category
+      setTimeout(() => {
+        toggleCategory(categoryValue);
+      }, 100);
+    }
+  };
+
+  const isActiveCategory = (categoryName: string) => {
+    const categoryValue = categoryMap[categoryName];
+    return categoryValue && filters.selectedCategories.includes(categoryValue);
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -292,14 +326,66 @@ const IndexContent = () => {
 
             {/* Desktop Navigation Links */}
             <div className="hidden md:flex space-x-6 lg:space-x-8">
-              <a href="#" className="text-black font-medium hover:text-gray-600 transition-colors text-sm lg:text-base">NEW</a>
-              <a href="#" className="text-gray-700 font-medium hover:text-black transition-colors text-sm lg:text-base">CLOTHING</a>
-              <a href="#" className="text-gray-700 font-medium hover:text-black transition-colors text-sm lg:text-base">SHOES</a>
-              <a href="#" className="text-gray-700 font-medium hover:text-black transition-colors text-sm lg:text-base">ACCESSORIES</a>
-              <a href="#" className="text-gray-700 font-medium hover:text-black transition-colors text-sm lg:text-base">DESIGNERS</a>
-              <a href="#" className="text-gray-700 font-medium hover:text-black transition-colors text-sm lg:text-base">CURATED</a>
-              <a href="#" className="text-red-600 font-medium hover:text-red-700 transition-colors text-sm lg:text-base">SALE</a>
-              <a href="/admin" className="text-gray-700 font-medium hover:text-black transition-colors text-sm lg:text-base">ADMIN</a>
+              <button 
+                onClick={() => handleCategoryClick('NEW')}
+                className={`font-medium hover:text-gray-600 transition-colors text-sm lg:text-base ${
+                  isActiveCategory('NEW') ? 'text-black' : 'text-gray-700'
+                }`}
+              >
+                NEW
+              </button>
+              <button 
+                onClick={() => handleCategoryClick('CLOTHING')}
+                className={`font-medium hover:text-black transition-colors text-sm lg:text-base ${
+                  isActiveCategory('CLOTHING') ? 'text-black' : 'text-gray-700'
+                }`}
+              >
+                CLOTHING
+              </button>
+              <button 
+                onClick={() => handleCategoryClick('SHOES')}
+                className={`font-medium hover:text-black transition-colors text-sm lg:text-base ${
+                  isActiveCategory('SHOES') ? 'text-black' : 'text-gray-700'
+                }`}
+              >
+                SHOES
+              </button>
+              <button 
+                onClick={() => handleCategoryClick('ACCESSORIES')}
+                className={`font-medium hover:text-black transition-colors text-sm lg:text-base ${
+                  isActiveCategory('ACCESSORIES') ? 'text-black' : 'text-gray-700'
+                }`}
+              >
+                ACCESSORIES
+              </button>
+              <button 
+                onClick={() => handleCategoryClick('DESIGNERS')}
+                className={`font-medium hover:text-black transition-colors text-sm lg:text-base ${
+                  isActiveCategory('DESIGNERS') ? 'text-black' : 'text-gray-700'
+                }`}
+              >
+                DESIGNERS
+              </button>
+              <button 
+                onClick={() => handleCategoryClick('CURATED')}
+                className={`font-medium hover:text-black transition-colors text-sm lg:text-base ${
+                  isActiveCategory('CURATED') ? 'text-black' : 'text-gray-700'
+                }`}
+              >
+                CURATED
+              </button>
+              <button 
+                onClick={() => handleCategoryClick('SALE')}
+                className="text-red-600 font-medium hover:text-red-700 transition-colors text-sm lg:text-base"
+              >
+                SALE
+              </button>
+              <button 
+                onClick={() => handleCategoryClick('ADMIN')}
+                className="text-gray-700 font-medium hover:text-black transition-colors text-sm lg:text-base"
+              >
+                ADMIN
+              </button>
             </div>
 
             {/* Right Icons */}
@@ -322,14 +408,66 @@ const IndexContent = () => {
           {/* Mobile Navigation Menu */}
           {mobileMenuOpen && (
             <div className="md:hidden border-t border-gray-200 py-4 space-y-4">
-              <a href="#" className="block text-black font-medium hover:text-gray-600 transition-colors">NEW</a>
-              <a href="#" className="block text-gray-700 font-medium hover:text-black transition-colors">CLOTHING</a>
-              <a href="#" className="block text-gray-700 font-medium hover:text-black transition-colors">SHOES</a>
-              <a href="#" className="block text-gray-700 font-medium hover:text-black transition-colors">ACCESSORIES</a>
-              <a href="#" className="block text-gray-700 font-medium hover:text-black transition-colors">DESIGNERS</a>
-              <a href="#" className="block text-gray-700 font-medium hover:text-black transition-colors">CURATED</a>
-              <a href="#" className="block text-red-600 font-medium hover:text-red-700 transition-colors">SALE</a>
-              <a href="/admin" className="block text-gray-700 font-medium hover:text-black transition-colors">ADMIN</a>
+              <button 
+                onClick={() => handleCategoryClick('NEW')}
+                className={`block font-medium hover:text-gray-600 transition-colors ${
+                  isActiveCategory('NEW') ? 'text-black' : 'text-gray-700'
+                }`}
+              >
+                NEW
+              </button>
+              <button 
+                onClick={() => handleCategoryClick('CLOTHING')}
+                className={`block font-medium hover:text-black transition-colors ${
+                  isActiveCategory('CLOTHING') ? 'text-black' : 'text-gray-700'
+                }`}
+              >
+                CLOTHING
+              </button>
+              <button 
+                onClick={() => handleCategoryClick('SHOES')}
+                className={`block font-medium hover:text-black transition-colors ${
+                  isActiveCategory('SHOES') ? 'text-black' : 'text-gray-700'
+                }`}
+              >
+                SHOES
+              </button>
+              <button 
+                onClick={() => handleCategoryClick('ACCESSORIES')}
+                className={`block font-medium hover:text-black transition-colors ${
+                  isActiveCategory('ACCESSORIES') ? 'text-black' : 'text-gray-700'
+                }`}
+              >
+                ACCESSORIES
+              </button>
+              <button 
+                onClick={() => handleCategoryClick('DESIGNERS')}
+                className={`block font-medium hover:text-black transition-colors ${
+                  isActiveCategory('DESIGNERS') ? 'text-black' : 'text-gray-700'
+                }`}
+              >
+                DESIGNERS
+              </button>
+              <button 
+                onClick={() => handleCategoryClick('CURATED')}
+                className={`block font-medium hover:text-black transition-colors ${
+                  isActiveCategory('CURATED') ? 'text-black' : 'text-gray-700'
+                }`}
+              >
+                CURATED
+              </button>
+              <button 
+                onClick={() => handleCategoryClick('SALE')}
+                className="block text-red-600 font-medium hover:text-red-700 transition-colors"
+              >
+                SALE
+              </button>
+              <button 
+                onClick={() => handleCategoryClick('ADMIN')}
+                className="block text-gray-700 font-medium hover:text-black transition-colors"
+              >
+                ADMIN
+              </button>
               <div className="pt-4 border-t border-gray-200">
                 <div className="flex items-center space-x-4">
                   <Search className="h-5 w-5 text-gray-700" />
