@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +8,7 @@ import { useCart } from '@/contexts/CartContext';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, CreditCard, Truck } from 'lucide-react';
 import { toast } from 'sonner';
+import { getFlutterwaveKeys } from '@/utils/adminSettings';
 
 // Flutterwave types
 declare global {
@@ -114,10 +114,18 @@ const Checkout = () => {
       return;
     }
 
+    // Get Flutterwave keys from admin settings
+    const flutterwaveKeys = getFlutterwaveKeys();
+    
+    if (!flutterwaveKeys.publicKey) {
+      toast.error('Payment system not configured. Please contact administrator.');
+      return;
+    }
+
     const txRef = generateTxRef();
 
     const flutterwaveOptions: FlutterwaveOptions = {
-      public_key: "FLWPUBK_TEST-e5aac5907ea18b76e89efa62fd5bd843-X",
+      public_key: flutterwaveKeys.publicKey,
       tx_ref: txRef,
       amount: totalUGX,
       currency: "UGX",
