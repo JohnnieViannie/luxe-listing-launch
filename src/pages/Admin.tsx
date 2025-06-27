@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Trash2, Package, Users, ShoppingCart, DollarSign, Eye, CheckCircle, XCircle } from "lucide-react";
 import AdminSidebar from "@/components/AdminSidebar";
 import ProductFormModal from "@/components/ProductFormModal";
+import AdminSettings from "@/components/AdminSettings";
 
 interface Product {
   id: number;
@@ -457,6 +458,10 @@ const Admin = () => {
     </Card>
   );
 
+  const renderSettings = () => (
+    <AdminSettings onSettingsUpdate={fetchData} />
+  );
+
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
@@ -468,16 +473,7 @@ const Admin = () => {
       case 'customers':
         return renderCustomers();
       case 'settings':
-        return (
-          <Card>
-            <CardHeader>
-              <CardTitle>Settings</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600">Settings panel coming soon...</p>
-            </CardContent>
-          </Card>
-        );
+        return renderSettings();
       default:
         return renderDashboard();
     }
