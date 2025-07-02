@@ -6,12 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Plus, X, Upload, Trash2, Image as ImageIcon, Package, Users, ShoppingCart, DollarSign, Eye, CheckCircle, XCircle, Edit } from "lucide-react";
+import { Plus, X, Upload, Trash2, Image as ImageIcon, Package, Users, ShoppingCart, DollarSign, Eye, CheckCircle, XCircle, Edit, LogOut } from "lucide-react";
 import { useRef } from "react";
 import { toast } from "sonner";
 import AdminSidebar from "@/components/AdminSidebar";
 import ProductFormModal from "@/components/ProductFormModal";
 import AdminSettings from "@/components/AdminSettings";
+import AdminLogin from "@/components/AdminLogin";
+import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { API_BASE_URL } from '@/lib/urls';
 import api from '@/lib/api';
 import { Product } from '@/types/product';
@@ -45,6 +47,7 @@ interface Order {
 }
 
 const Admin = () => {
+  const { isAuthenticated, login, logout } = useAdminAuth();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,6 +74,11 @@ const Admin = () => {
     sizes: [] as string[],
     colors: [] as string[]
   });
+
+  // If not authenticated, show login form
+  if (!isAuthenticated) {
+    return <AdminLogin onLogin={login} />;
+  }
 
   useEffect(() => {
     fetchData();
@@ -235,6 +243,17 @@ const Admin = () => {
 
   const renderDashboard = () => (
     <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold">Dashboard Overview</h2>
+          <p className="text-gray-600">Welcome back to your admin panel</p>
+        </div>
+        <Button variant="outline" onClick={logout} className="flex items-center gap-2">
+          <LogOut className="h-4 w-4" />
+          Logout
+        </Button>
+      </div>
+      
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -288,7 +307,7 @@ const Admin = () => {
             {orders.slice(0, 5).map((order) => (
               <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg">
                 <div>
-                  <p className="font-medium">{order.items[0].name}</p>
+                  <p className="font-medium">{order.items[0]?.name}</p>
                   <p className="text-sm text-gray-500">{order.customer_name}</p>
                 </div>
                 <div className="text-right">
@@ -939,7 +958,7 @@ const Admin = () => {
           <h1 className="text-3xl font-bold text-gray-900">
             {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
           </h1>
-          <p className="text-gray-600">Manage your  store</p>
+          <p className="text-gray-600">Manage your store</p>
         </div>
 
         {loading ? (
